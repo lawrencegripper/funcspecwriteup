@@ -2,7 +2,7 @@
 
 I first encountered this issue when working on a change in `terraform` to [add the ability to list functions keys](https://github.com/terraform-providers/terraform-provider-azurerm/pull/4066)and [wrote it up here with a manual change to the Swagger which resolves the issue for the endpoint I used `WebApps_ListFunctionSecrets`](https://github.com/Azure/azure-rest-api-specs/issues/7143).
 
-Here is a quick write up of the issue as it looks like it affects a number of the endpoints in the REST specs for both `2018-02-01` and `2018-08-01`. We'll focus on `2018-02-01` below to simiplify things.
+Here is a quick write up of the issue as it looks like it affects a number of the endpoints in the REST specs for both `2018-02-01` and `2018-08-01`. We'll focus on `2018-02-01` below to simplify things.
 
 For details on how to reproduce these findings see [./repro.md](./repro.md).
 
@@ -256,4 +256,168 @@ The `DIFF` is that the `allOf` statement has incorrectly included 4 additional
      "trigger_url": "https://something.azurewebsites.net/api/testfunc?code=LZro9ICVG/Wdbsomekey"
 -   }                     // Ignore: Introduce by Issue 1
  }
+```
+
+
+### Repeated issue in newer APIs
+
+While investigating the issue I was pointed to a newer set of APIs here: https://github.com/Azure/azure-rest-api-specs/pull/7174#issuecomment-325438810
+
+This includes a repeat of the above issue on a number of new APIS:
+
+- POST api/sites/{name}[/slots/{slot}]/functions/{functionName}/listkeys
+- PUT api/sites/{name}[/slots/{slot}]/functions/{functionName}/keys/{keyName}
+- DELETE api/sites/{name}[/slots/{slot}]/functions/{functionName}/keys/{keyName}
+- POST api/sites/{name}[/slots/{slot}]/host/default/listkeys
+- PUT api/sites/{name}[/slots/{slot}]/host/default/{functionkeys|systemkeys}/{keyName}
+- DELETE api/sites/{name}[/slots/{slot}]/host/default/{functionkeys|systemkeys}/{keyName}
+- POST api/sites/{name}[/slots/{slot}]/host/default/sync
+- POST api/sites/{name}[/slots/{slot}]/host/default/listsyncstatus
+- GET api/sites/{name}[/slots/{slot}]/functions/{functionName}/properties/state
+- PUT api/sites/{name}[/slots/{slot}]/functions/{functionName}/properties/state
+- GET api/sites/{name}[/slots/{slot}]/functions/{functionName}/properties/status
+- GET api/sites/{name}[/slots/{slot}]/host/default/properties/config
+- GET api/sites/{name}[/slots/{slot}]/host/default/properties/status
+
+Local copy of changes in [./testdata/2091OR7174WebApps.json](./testdata/2091OR7174WebApps.json)
+
+### Example 1: OperationID `WebApps_ListHostKeys`
+
+#### Details
+
+The defined return type for `WebApps_ListHostKeys` in the REST Spec has a definition of `"#/definitions/HostKeys"`. This is the following `JSON`:
+
+```json
+{
+  "description": "Functions host level keys.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "./CommonDefinitions.json#/definitions/ProxyOnlyResource"
+    }
+  ],
+  "properties": {
+    "properties": {
+      "description": "HostKeys resource specific properties",
+      "properties": {
+        "masterKey": {
+          "description": "Secret key.",
+          "type": "string"
+        },
+        "functionKeys": {
+          "description": "Host level function keys.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "systemKeys": {
+          "description": "System keys.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "x-ms-client-flatten": true
+    }
+  }
+}
+```
+
+Translated to the response this defines an `EXPECTED` response from the API to be the following `json`:
+
+```json
+ {
+   "id": "someid",
+   "name": "somename",
+   "kind": "somekind",
+   "type": "sometype",
+   "properties": {
+     "masterkey": "LZro9c3Aq2HxICVG/somekey",
+     "functionKeys": {},
+     "systemKeys": {}
+   }
+ }
+```
+
+Making a request with `az rest --method post -u /subscriptions/somesub-d51e-4456-a72e-0447910568d3/resourceGroups/funcRestSpecTest/providers/Microsoft.Web/sites/somesite/host/default/listkeys?api-version=2018-02-01`.
+
+The `ACTUAL` response body is:
+
+```json
+{
+
+  "functionKeys": {
+    "default": "KJvuWBMHd8O0sXuB5qFkKCPUuMR//VCPcvoyXsVNnnxWsR9lfqIqHA=="
+  },
+  "masterKey": "8mHmW6CjbiFdt1pJrnxJ3bty5zWNScw6qPFEvaFUl20cpSm4pCeHhg==",
+  "systemKeys": {
+    "eventgridextensionconfig_extension": "/QMEve5NWSdZ89Or2kf/ET56HmPXmoDe1E6WoRuM0cSN240i6GhIqA=="
+  }
+}
+```
+
+## Other issues Seen in PR: https://github.com/Azure/azure-rest-api-specs/pull/7174#issuecomment-325438810
+
+### Incorrect content values set on: `WebApps_ListSyncStatus` 
+
+`DEFINITION`: POST api/sites/{name}[/slots/{slot}]/host/default/listsyncstatus
+
+This shows that the responses will be statusCode of `204` with `No Content`
+
+```json
+{
+  "tags": [
+    "WebApps"
+  ],
+  "summary": "This is to allow calling via powershell and ARM template.",
+  "description": "This is to allow calling via powershell and ARM template.",
+  "operationId": "WebApps_ListSyncStatus",
+  "parameters": [
+    {
+      "$ref": "#/parameters/resourceGroupNameParameter"
+    },
+    {
+      "name": "name",
+      "in": "path",
+      "description": "Name of the app.",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "$ref": "#/parameters/subscriptionIdParameter"
+    },
+    {
+      "$ref": "#/parameters/apiVersionParameter"
+    }
+  ],
+  "responses": {
+    "204": {
+      "description": "No Content"
+    }
+  }
+}
+```
+
+`Actual` Response looks returns a `200` with a body of:
+
+```json
+{
+  "status": "success"
+}
+```
+
+Making a request with `az rest --method post -u /subscriptions/somesub-d51e-4456-a72e-0447910568d3/resourceGroups/funcRestSpecTest/providers/Microsoft.Web/sites/somesite/host/default/listsyncstatus?api-version=2018-02-01 --debug`
+
+Raw:
+
+```
+urllib3.connectionpool : https://management.azure.com:443 "POST /subscriptions/somesub-d51e-4456-a72e-0447910568d3/resourceGroups/funcRestSpecTest/providers/Microsoft.Web/sites/somesite/host/default/listsyncstatus?api-version=2018-02-01 HTTP/1.1" 200 None
+Event: CommandInvoker.OnTransformResult [<function _resource_group_transform at 0x7fdf26468488>, <function _x509_from_base64_to_hex_transform at 0x7fdf26468510>]
+Event: CommandInvoker.OnFilterResult []
+{
+  "status": "success"
+}
+
 ```

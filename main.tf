@@ -51,3 +51,11 @@ resource "azurerm_function_app" "test" {
     FUNCTIONS_WORKER_RUNTIME = "node"
   }
 }
+
+output "function_endpoint" {
+  value = "${azurerm_function_app.test.id}/functions/testfunc"
+}
+
+output "site_endpoint" {
+  value = "${azurerm_function_app.test.id}"
+}
