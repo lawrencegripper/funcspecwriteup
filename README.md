@@ -203,7 +203,7 @@ You can see from the code that it also looks for a top level value of `keys` in 
 
 ### What is the impact?
 
-In the generated SDKs (tested Go and .NET) the API has additional confusing properties on request that don't make sense and are never deserialised too. 
+In the generated SDKs (tested Go and .NET) the API has additional confusing properties on request that don't make sense and are never deserialised to. 
 
 ## Details
 
