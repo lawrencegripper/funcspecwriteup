@@ -169,6 +169,35 @@ The `DIFF` is that the spec incorrectly expects the `key` and `trigger` properti
  }
 ```
 
+### How does the Function CLI do this?
+
+I went to look at the code for the [func cli](https://github.com/Azure/azure-functions-core-tools/blob/9cc58db73732bf17364c151be822036f52c78cd4/src/Azure.Functions.Cli/Helpers/AzureHelper.cs#L143-L161) to look at how it gets keys back. 
+
+You can see from the code that it also looks for a top level value of `keys` in the response and not `properties.keys` as defined in the spec. 
+
+```csharp
+        internal static async Task<string> GetFunctionKey(string functionName, string appId, string accessToken, string managementURL)
+        {
+            // If anything goes wrong anywhere, simply return null and let the caller take care of it.
+            if (string.IsNullOrEmpty(functionName) || string.IsNullOrEmpty(accessToken))
+            {
+                return null;
+            }
+            var url = new Uri($"{managementURL}{appId}/hostruntime/admin/functions/{functionName}/keys?api-version={ArmUriTemplates.WebsitesApiVersion}");
+            var key = string.Empty;
+            try
+            {
+                var keysJson = await ArmHttpAsync<JToken>(HttpMethod.Get, url, accessToken);
+                key = (string)(keysJson["keys"] as JArray).First()["value"];
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+            return key;
+        }
+```
+
 
 ## Issue 2: Incorrect addition of properties in the REST Spec 
 
