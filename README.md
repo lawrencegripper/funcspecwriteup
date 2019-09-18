@@ -4,9 +4,12 @@ I first encountered this issue when working on a change in `terraform` to [add t
 
 Here is a quick write up of the issue as it looks like it affects a number of the endpoints in the REST specs for both `2018-02-01` and `2018-08-01`. We'll focus on `2018-02-01` below to simplify things.
 
-For details on how to reproduce these findings see [./repro.md](./repro.md).
+For details on how to reproduce these findings see 
 
-## Initial `WebApps_ListFunctionSecrets` inconsistency
+- [./repro.md](./repro.md) for doing this in the CLI
+- [./dotnetsample](./dotnetsample) showing issues when using the .NET SDK (also affects Golang as generated from same Spec)
+
+# Initial `WebApps_ListFunctionSecrets` inconsistency
 
 The [spec defines the call as follows](https://github.com/Azure/azure-rest-api-specs/blob/8a02736ee4e89d8115d4ed5d2001e8c8d78ca878/specification/web/resource-manager/Microsoft.Web/stable/2018-02-01/WebApps.json#L3105-L3153):
 
@@ -106,13 +109,13 @@ az rest --method post
 }
 ```
 
-### Issue 1: Mismatched Body between REST Spec and Actual Response
+## Issue 1: Mismatched Body between REST Spec and Actual Response
 
-#### What is the impact?
+### What is the impact?
 
 In the generated SDKs (tested Go and .NET) the API is unusable as the result cannot be deserialized correctly.
 
-#### Details
+### Details
 
 The defined return type for `WebApps_ListFunctionSecrets` in the REST Spec has a body definition of `"#/definitions/FunctionSecrets"`. This is the following JSON:
 
@@ -167,13 +170,13 @@ The `DIFF` is that the spec incorrectly expects the `key` and `trigger` properti
 ```
 
 
-### Issue 2: Incorrect addition of properties in the REST Spec 
+## Issue 2: Incorrect addition of properties in the REST Spec 
 
-#### What is the impact?
+### What is the impact?
 
 In the generated SDKs (tested Go and .NET) the API has additional confusing properties on request that don't make sense and are never deserialised too. 
 
-### Details
+## Details
 
 
 The defined return type for `WebApps_ListFunctionSecrets` in the REST Spec has a body definition of `"#/definitions/FunctionSecrets"`.
@@ -259,7 +262,7 @@ The `DIFF` is that the `allOf` statement has incorrectly included 4 additional
 ```
 
 
-### Repeated issue in newer APIs
+## Repeated issue in newer APIs
 
 While investigating the issue I was pointed to a newer set of APIs here: https://github.com/Azure/azure-rest-api-specs/pull/7174#issuecomment-325438810
 
@@ -281,9 +284,9 @@ This includes a repeat of the above issue on a number of new APIS:
 
 Local copy of changes in [./testdata/2091OR7174WebApps.json](./testdata/2091OR7174WebApps.json)
 
-### Example 1: OperationID `WebApps_ListHostKeys`
+## Example 1: OperationID `WebApps_ListHostKeys`
 
-#### Details
+### Details
 
 The defined return type for `WebApps_ListHostKeys` in the REST Spec has a definition of `"#/definitions/HostKeys"`. This is the following `JSON`:
 
