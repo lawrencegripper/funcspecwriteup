@@ -6,7 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAzure.Management.WebSites" Version="4.0.0" />
+    <PackageReference Include="ConsoleAppLauncher" Version="1.0.6354.408" />
+    <PackageReference Include="Microsoft.Azure.Management.WebSites" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Rest.ClientRuntime.Azure.Authentication" Version="2.4.0" />
   </ItemGroup>
 
 </Project>
