@@ -174,7 +174,7 @@ The `DIFF` is that the spec incorrectly expects the `key` and `trigger` properti
 
 ### What is the impact?
 
-In the generated SDKs (tested Go and .NET) the API has additional confusing properties on request that don't make sense and are never deserialised too. 
+In the generated SDKs (tested Go and .NET) the API has additional confusing properties on request that don't make sense and are never deserialised to. 
 
 ## Details
 
